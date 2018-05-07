@@ -1,4 +1,6 @@
-#!/bin/ghci
+#!/bin/runhaskell
+module Main where 
+    
 import System.Process
 import Prelude hiding (lines)
 import Data.Text (null, Text, empty, strip, pack, splitOn)
@@ -6,6 +8,9 @@ import Data.List (transpose)
 import Data.Time.Calendar
 import Data.Time.Clock (getCurrentTime)
 import Data.Time.Clock (utctDay)
+import Control.Monad    
+import System.Directory
+import System.Environment
 import qualified Data.Text as T
 
 -- size of one food field
@@ -60,14 +65,16 @@ parseDate year s = fromGregorian (fromInteger year) month monthDay
         month =  read $ parts !! 1
 
 main = do
+    print "delete file if exist"
+    fileExists <- doesFileExist fileName
+    when fileExists (removeFile fileName)
     print "download"
     callProcess "wget" ["http://www.aserv.kit.edu/downloads/Speiseplan_deutsch.pdf", "--prefer-family=IPv4"]
     print "convert to text"
-    callProcess "pdftotext" ["Speiseplan_deutsch.pdf", "-layout", "-l", "1", "-enc", "UTF-8"]
-    print "read from file"
-    content <- readConvertedFile
-    putStrLn content
-
+    canteen <- extractCanteen
+    writeFile "data.xml" (writeCanteen canteen)
+    where
+        fileName = "Speiseplan_deutsch.pdf"
 
 readConvertedFile :: IO String
 readConvertedFile = do
