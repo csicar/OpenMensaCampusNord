@@ -45,11 +45,11 @@ extra-source-files:  ChangeLog.md
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
-
 executable MensaCampusNord
   -- .hs or .lhs file containing the Main module.
   main-is:             Main.hs
   
+  ld-options: -static
   -- Modules included in this executable, other than Main.
   -- other-modules:       
   
@@ -57,12 +57,15 @@ executable MensaCampusNord
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.10 && <4.11,
-                      text >=1.0.0 && < 1.5.0
+  build-depends:       base >=4.9 && <4.11,
+                       text >=1.0.0 && < 1.5.0,
+                       process >=1.0.0 && < 2.0.0,
+                       time >= 1.0.0 && < 2.0.0,
+                       directory >= 1.0.0 && < 2.0.0
   
   -- Directories containing source files.
   hs-source-dirs:      src
   
   -- Base language which the package is written in.
   default-language:    Haskell2010
-  
+
