@@ -79,7 +79,7 @@ main = do
     canteen <- extractCanteen
     writeFile "data.xml" (writeCanteen canteen)
     pushUrl <- getArgs >>= return . head
-    --callProcess "scp" ["data.xml", pushUrl]
+    callProcess "scp" ["data.xml", pushUrl]
     print "end"
     where
         fileName = "Speiseplan_deutsch.pdf"
