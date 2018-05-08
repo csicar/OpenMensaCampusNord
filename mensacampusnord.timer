@@ -1,9 +1,10 @@
 [Unit]
 Description=Mensa Campus Nord Crawler
 
+
 [Timer]
-OnBootSec=15min
-OnUnitActiveSec=12h 
+OnBootSec=10min
+OnUnitActiveSec=6h 
 
 [Install]
 WantedBy=timers.target
