@@ -5,8 +5,13 @@ Building
 --------
 
 install `poppler-utils` for the `pdftotext` command
+install `cabal-install` for `cabal`
 
-`cabal install`
+```bash
+$ cabal update
+$ cabal sandbox init
+$ cabal install
+```
 
 for static compile:
 `cabal build --ghc-options="-fPIC -optl-static -optl-pthread"`

@@ -1,6 +1,6 @@
 #!/bin/runhaskell
 module Main where 
-    
+
 import System.Process
 import Prelude hiding (lines)
 import Data.Text (null, Text, empty, strip, pack, splitOn)
@@ -73,6 +73,8 @@ main = do
     print "convert to text"
     canteen <- extractCanteen
     writeFile "data.xml" (writeCanteen canteen)
+    pushUrl <- getArgs >>= return . head
+    callProcess "scp" ["data.xml", pushUrl]
     where
         fileName = "Speiseplan_deutsch.pdf"
 
