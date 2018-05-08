@@ -22,3 +22,11 @@ Run
 ---
 
 ```cabal run serveruser@server.com:/path/to/file/to/write.xml```
+
+Install
+----
+
+```bash
+$ cp mensacampusnord.* /etc/systemctl/system/
+$ cabal build
+$ cp dist/build/MensaCampusNord/MensaCampusNord /usr/local/bin

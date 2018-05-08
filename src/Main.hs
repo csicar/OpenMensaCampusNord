@@ -3,7 +3,6 @@ module Main where
 
 import System.Process
 import Prelude hiding (lines)
-import Data.Text (null, Text, empty, strip, pack, splitOn)
 import Data.List (transpose, isInfixOf)
 import Data.Time.Calendar
 import Data.Time.Clock (getCurrentTime)
@@ -11,6 +10,7 @@ import Data.Time.Clock (utctDay)
 import Control.Monad    
 import System.Directory
 import System.Environment
+import Data.Ratio ( (%), numerator, denominator )
 import qualified Data.Text as T
 
 -- size of one food field
@@ -35,7 +35,7 @@ firstPriceY = 228
 
 data Meal = Meal 
     { description :: String
-    , price :: String
+    , price :: Rational
     } deriving Show
 
 data Line = 
@@ -69,6 +69,8 @@ parseDate year s = fromGregorian (fromInteger year) month monthDay
         monthDay = read $ parts !! 0
         month =  read $ parts !! 1
 
+fileName = "Speiseplan_deutsch.pdf"
+        
 main = do
     print "delete file if exist"
     fileExists <- doesFileExist fileName
@@ -78,25 +80,40 @@ main = do
     print "convert to text"
     canteen <- extractCanteen
     writeFile "data.xml" (writeCanteen canteen)
-    pushUrl <- getArgs >>= return . head
-    callProcess "scp" ["data.xml", pushUrl]
-    print "end"
-    where
-        fileName = "Speiseplan_deutsch.pdf"
+    args <- getArgs
+    print args
+    if null args then do
+        return ()
+    else do
+        pushUrl <- getArgs >>= return . head
+        callProcess "scp" ["data.xml", pushUrl]
 
 readConvertedFile :: IO String
 readConvertedFile = do
     file <- readFile "Speiseplan_deutsch.txt"
     return $! file
 
+displayRational :: Int -> Rational -> String
+displayRational len rat = (if num < 0 then "-" else "") ++ (shows d ("." ++ take len (go next)))
+    where
+        (d, next) = abs num `quotRem` den
+        num = numerator rat
+        den = denominator rat
+
+        go 0 = ""
+        go x = let (d, next) = (10 * x) `quotRem` den
+               in shows d (go next)
+
 cleanTextUp :: String -> String
 cleanTextUp = T.unpack . T.strip . T.intercalate (T.pack " ") . T.lines . T.pack 
 
-parsePrice :: String -> String
-parsePrice = T.unpack . T.intercalate dot . T.splitOn comma . T.filter (/='€') . T.pack . cleanTextUp
+parsePrice :: String -> Rational
+parsePrice = readRationalParts .  T.splitOn comma . T.filter (/='€') . T.pack . cleanTextUp
     where
         dot = T.pack "."
         comma = T.pack ","
+        readRationalParts :: [T.Text] -> Rational
+        readRationalParts [euro, cent] = (read (T.unpack euro) % 1) + (read (T.unpack cent) % 100)
 
 extractBox :: Int -> Int -> Int -> Int -> IO String
 extractBox x y width height = do
@@ -139,7 +156,7 @@ extractDays startDay endDay = do
             lines <- extractLine dayIndex
             return CanteenDay {dayDate=addDays (toInteger dayIndex) startDay, lines=lines}
 
-extractPrice :: Int -> Int -> IO String
+extractPrice :: Int -> Int -> IO Rational
 extractPrice dayIndex lineIndex = do
     raw <- extractBox
         (firstPriceX + dayIndex * deltaX)
@@ -207,7 +224,8 @@ writeMeal :: Meal -> String
 writeMeal meal =
     "<meal>\
         \<name>" ++ (description meal) ++ "</name>\
-        \<price role=\"student\">" ++ (price meal) ++ "</price>\
-        \<price role=\"employee\">" ++ (price meal) ++ "</price>\
-        \<price role=\"other\">" ++ (price meal) ++ "</price>\
+        \<price role=\"student\">" ++ (showPrice $ price meal) ++ "</price>\
+        \<price role=\"employee\">" ++ (showPrice $ price meal) ++ "</price>\
+        \<price role=\"other\">" ++ (showPrice $ price meal * (1 % 1 + 1 % 3)) ++ "</price>\
     \</meal>"
+    where showPrice = displayRational 2
