@@ -15,7 +15,7 @@ import qualified Data.Text as T
 
 -- size of one food field
 mealInfoWidth = 114
-mealInfoHeith = 50
+mealInfoHeith = 65
 
 -- size of one price field
 priceWidth = 114
