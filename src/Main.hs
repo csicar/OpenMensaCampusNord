@@ -226,6 +226,6 @@ writeMeal meal =
         \<name>" ++ (description meal) ++ "</name>\
         \<price role=\"student\">" ++ (showPrice $ price meal) ++ "</price>\
         \<price role=\"employee\">" ++ (showPrice $ price meal) ++ "</price>\
-        \<price role=\"other\">" ++ (showPrice $ price meal * (1 % 1 + 1 % 3)) ++ "</price>\
+        \<price role=\"other\">" ++ (showPrice $ price meal * (1 + 3 % 10)) ++ "</price>\
     \</meal>"
     where showPrice = displayRational 2
