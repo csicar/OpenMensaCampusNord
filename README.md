@@ -17,3 +17,8 @@ for static compile:
 `cabal build --ghc-options="-fPIC -optl-static -optl-pthread"`
 dynamic linked:
 `cabal build`
+
+Run
+---
+
+```cabal run serveruser@server.com:/path/to/file/to/write.xml```

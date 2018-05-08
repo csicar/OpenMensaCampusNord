@@ -4,7 +4,7 @@ module Main where
 import System.Process
 import Prelude hiding (lines)
 import Data.Text (null, Text, empty, strip, pack, splitOn)
-import Data.List (transpose)
+import Data.List (transpose, isInfixOf)
 import Data.Time.Calendar
 import Data.Time.Clock (getCurrentTime)
 import Data.Time.Clock (utctDay)
@@ -38,10 +38,15 @@ data Meal = Meal
     , price :: String
     } deriving Show
 
-data Line = Line 
-    { lineName :: String
-    , meal :: Meal
-    } deriving Show
+data Line = 
+    ClosedLine String
+    | OpenLine 
+        { lineName :: String
+        , meal :: Meal
+        } deriving Show
+
+isClosed (ClosedLine _) = True
+isClosed _ = False
 
 data CanteenDay = CanteenDay 
     { dayDate :: Day
@@ -74,7 +79,8 @@ main = do
     canteen <- extractCanteen
     writeFile "data.xml" (writeCanteen canteen)
     pushUrl <- getArgs >>= return . head
-    callProcess "scp" ["data.xml", pushUrl]
+    --callProcess "scp" ["data.xml", pushUrl]
+    print "end"
     where
         fileName = "Speiseplan_deutsch.pdf"
 
@@ -84,7 +90,13 @@ readConvertedFile = do
     return $! file
 
 cleanTextUp :: String -> String
-cleanTextUp = T.unpack . T.intercalate (T.pack " ") . T.lines . T.pack 
+cleanTextUp = T.unpack . T.strip . T.intercalate (T.pack " ") . T.lines . T.pack 
+
+parsePrice :: String -> String
+parsePrice = T.unpack . T.intercalate dot . T.splitOn comma . T.filter (/='€') . T.pack . cleanTextUp
+    where
+        dot = T.pack "."
+        comma = T.pack ","
 
 extractBox :: Int -> Int -> Int -> Int -> IO String
 extractBox x y width height = do
@@ -104,7 +116,7 @@ extractMealDescr dayIndex lineIndex = do
         (firstItemY + lineIndex * deltaY)
         mealInfoWidth
         mealInfoHeith
-    
+
 
 extractLine :: Int -> IO [Line]
 extractLine dayIndex = do
@@ -113,7 +125,10 @@ extractLine dayIndex = do
         f :: String -> Int -> IO Line
         f lineName lineIndex = do
             meal <- extractMeal dayIndex lineIndex
-            return Line {lineName=lineName, meal=meal}
+            if ("Geschlossen" `isInfixOf` description meal) then do
+                return $ ClosedLine lineName 
+            else do
+                return OpenLine {lineName=lineName, meal=meal}
             
 extractDays :: Day -> Day -> IO [CanteenDay]
 extractDays startDay endDay = do
@@ -126,11 +141,12 @@ extractDays startDay endDay = do
 
 extractPrice :: Int -> Int -> IO String
 extractPrice dayIndex lineIndex = do
-    extractBox
+    raw <- extractBox
         (firstPriceX + dayIndex * deltaX)
         (firstPriceY + lineIndex * deltaY)
         priceWidth
         priceHeight
+    return $ parsePrice raw
 
 extractMeal :: Int -> Int -> IO Meal
 extractMeal dayIndex lineIndex = do
@@ -178,11 +194,20 @@ writeDay day =
     ++ "</day>"
 
 writeLine :: Line -> String
-writeLine line = 
-    "<category name=\""++ (lineName line) ++"\">"
-    ++ writeMeal (meal line) ++
+writeLine (OpenLine name meal) = 
+    "<category name=\""++ name ++"\">"
+    ++ writeMeal meal ++
     "</category>"
+writeLine (ClosedLine name) =
+    "<category name=\""++ name ++ "\">\
+        \<meal><name>closed</name></meal>\
+    \</category>"
 
 writeMeal :: Meal -> String
 writeMeal meal =
-    "<meal><name>" ++ (description meal) ++ "</name></meal>"
+    "<meal>\
+        \<name>" ++ (description meal) ++ "</name>\
+        \<price role=\"student\">" ++ (price meal) ++ "</price>\
+        \<price role=\"employee\">" ++ (price meal) ++ "</price>\
+        \<price role=\"other\">" ++ (price meal) ++ "</price>\
+    \</meal>"
