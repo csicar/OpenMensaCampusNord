@@ -17,9 +17,13 @@ import qualified Data.Text as T
 mealInfoWidth = 114
 mealInfoHeith = 65
 
+-- distance from food field to start of Price field
+priceXOffset = 50
+
 -- size of one price field
-priceWidth = 114
+priceWidth = mealInfoWidth - priceXOffset
 priceHeight = 10
+
 
 -- offset of the upper left corner of the first food item
 firstItemX = 110
@@ -114,6 +118,7 @@ parsePrice = readRationalParts .  T.splitOn comma . T.filter (/='€') . T.pack 
         comma = T.pack ","
         readRationalParts :: [T.Text] -> Rational
         readRationalParts [euro, cent] = (read (T.unpack euro) % 1) + (read (T.unpack cent) % 100)
+        readRationalParts other = error (show other)
 
 extractBox :: Int -> Int -> Int -> Int -> IO String
 extractBox x y width height = do
@@ -159,7 +164,7 @@ extractDays startDay endDay = do
 extractPrice :: Int -> Int -> IO Rational
 extractPrice dayIndex lineIndex = do
     raw <- extractBox
-        (firstPriceX + dayIndex * deltaX)
+        (firstPriceX + priceXOffset + dayIndex * deltaX)
         (firstPriceY + lineIndex * deltaY)
         priceWidth
         priceHeight
