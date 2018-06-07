@@ -15,7 +15,7 @@ import qualified Data.Text as T
 
 -- size of one food field
 mealInfoWidth = 114
-mealInfoHeith = 65
+mealInfoHeith = 63
 
 -- distance from food field to start of Price field
 priceXOffset = 50
