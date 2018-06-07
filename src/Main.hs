@@ -39,7 +39,7 @@ deltaY = 75
 -- offset of the upper left corner of the first price
 firstPriceX = firstItemX
 -- this list will be tried, starting with the first one
-firstPriceYs = [228, 110]
+firstPriceYs = [228, 193]
 
 data Meal = Meal 
     { description :: String
@@ -227,33 +227,33 @@ writeCanteen canteen =
            \xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\
            \xsi:schemaLocation=\"http://openmensa.org/open-mensa-v2 http://openmensa.org/open-mensa-v2.xsd\">\n\
     \<version>1</version>\n\
-    \<canteen>\
+    \<canteen>\n\
         \" ++ (concat $ map writeDay (days canteen)) ++ "\
-    \</canteen>\
+    \\n</canteen>\
     \</openmensa>"
 
 writeDay :: CanteenDay -> String
 writeDay day = 
     "<day date=\""++ (show $ dayDate day) ++"\">"
     ++ (concat $ map writeLine (lines day))
-    ++ "</day>"
+    ++ "</day>\n"
 
 writeLine :: Line -> String
 writeLine (OpenLine name meal) = 
-    "<category name=\""++ name ++"\">"
+    "<category name=\""++ name ++"\">\n"
     ++ writeMeal meal ++
-    "</category>"
+    "</category>\n"
 writeLine (ClosedLine name) =
-    "<category name=\""++ name ++ "\">\
+    "<category name=\""++ name ++ "\">\n\
         \<meal><name>closed</name></meal>\
-    \</category>"
+    \</category>\n"
 
 writeMeal :: Meal -> String
 writeMeal meal =
-    "<meal>\
-        \<name>" ++ (description meal) ++ "</name>\
-        \<price role=\"student\">" ++ (showPrice $ price meal) ++ "</price>\
-        \<price role=\"employee\">" ++ (showPrice $ price meal) ++ "</price>\
-        \<price role=\"other\">" ++ (showPrice $ price meal * (1 + 3 % 10)) ++ "</price>\
-    \</meal>"
+    "<meal>\n\
+    \   <name>" ++ (description meal) ++ "</name>\n\
+    \   <price role=\"student\">" ++ (showPrice $ price meal) ++ "</price>\n\
+    \   <price role=\"employee\">" ++ (showPrice $ price meal) ++ "</price>\n\
+    \   <price role=\"other\">" ++ (showPrice $ price meal * (1 + 3 % 10)) ++ "</price>\n\
+    \</meal>\n"
     where showPrice = displayRational 2
