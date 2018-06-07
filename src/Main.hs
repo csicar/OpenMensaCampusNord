@@ -3,7 +3,10 @@ module Main where
 
 import System.Process
 import Prelude hiding (lines)
-import Data.List (transpose, isInfixOf)
+import Data.List (transpose, isInfixOf, partition)
+import Data.Traversable (for)
+import Data.Maybe (listToMaybe, fromMaybe)
+import Data.Either (isLeft)
 import Data.Time.Calendar
 import Data.Time.Clock (getCurrentTime)
 import Data.Time.Clock (utctDay)
@@ -35,7 +38,8 @@ deltaY = 75
 
 -- offset of the upper left corner of the first price
 firstPriceX = firstItemX
-firstPriceY = 228
+-- this list will be tried, starting with the first one
+firstPriceYs = [228, 110]
 
 data Meal = Meal 
     { description :: String
@@ -66,12 +70,15 @@ data Canteen = Canteen
 canteenDays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"]
 canteenLines = ["Grill Wok", "Tipp des Tages", "Vegetarisch Vegan", "Essen 1", "Pizza Pasta"]
 
+maybeRead = fmap fst . listToMaybe . reads
+
+
 parseDate :: Integer -> String -> Day
 parseDate year s = fromGregorian (fromInteger year) month monthDay
     where
         parts = map T.unpack $ T.splitOn (T.pack ".") (T.pack s)
-        monthDay = read $ parts !! 0
-        month =  read $ parts !! 1
+        monthDay = fromMaybe 0 $ maybeRead $ parts !! 0
+        month =  fromMaybe 0 $ maybeRead $ parts !! 1
 
 fileName = "Speiseplan_deutsch.pdf"
         
@@ -111,14 +118,23 @@ displayRational len rat = (if num < 0 then "-" else "") ++ (shows d ("." ++ take
 cleanTextUp :: String -> String
 cleanTextUp = T.unpack . T.strip . T.intercalate (T.pack " ") . T.lines . T.pack 
 
-parsePrice :: String -> Rational
+parsePrice :: String -> Either String Rational
 parsePrice = readRationalParts .  T.splitOn comma . T.filter (/='€') . T.pack . cleanTextUp
     where
         dot = T.pack "."
         comma = T.pack ","
-        readRationalParts :: [T.Text] -> Rational
-        readRationalParts [euro, cent] = (read (T.unpack euro) % 1) + (read (T.unpack cent) % 100)
-        readRationalParts other = error (show other)
+        readRationalParts :: [T.Text] -> Either String Rational
+        readRationalParts [euro, cent] = let 
+                maybeRead = fmap fst . listToMaybe . reads
+                parsed :: Maybe Rational
+                parsed = do
+                    euro <- maybeRead (T.unpack euro)
+                    cent <- maybeRead (T.unpack cent)
+                    return $ (euro % 1) + (cent % 100)
+            in case parsed of
+                Nothing -> Left $ "Could not parse number in " ++ (show [euro, cent])
+                Just val -> Right val
+        readRationalParts other = Left $ "Could not parse " ++ (show other) ++ " as a price"
 
 extractBox :: Int -> Int -> Int -> Int -> IO String
 extractBox x y width height = do
@@ -163,12 +179,19 @@ extractDays startDay endDay = do
 
 extractPrice :: Int -> Int -> IO Rational
 extractPrice dayIndex lineIndex = do
-    raw <- extractBox
-        (firstPriceX + priceXOffset + dayIndex * deltaX)
-        (firstPriceY + lineIndex * deltaY)
-        priceWidth
-        priceHeight
-    return $ parsePrice raw
+    tries <- for firstPriceYs $ \firstPriceY -> do
+        raw <- extractBox
+            (firstPriceX + priceXOffset + dayIndex * deltaX)
+            (firstPriceY + lineIndex * deltaY)
+            priceWidth
+            priceHeight
+        return $ parsePrice raw
+    
+    let (errors, matches) = partition isLeft tries
+    print dayIndex
+    return $ case matches of
+        (Right x:_) -> x
+        _ -> 0 % 1 --error (show errors)
 
 extractMeal :: Int -> Int -> IO Meal
 extractMeal dayIndex lineIndex = do
