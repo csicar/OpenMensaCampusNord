@@ -45,6 +45,16 @@ extra-source-files:  ChangeLog.md
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
+Test-Suite test-mensacampusnord
+  type: exitcode-stdio-1.0
+  main-is: TestMain.hs
+  build-depends:    base,
+                    Cabal >= 1.9.2,
+                    HUnit
+                    
+
+
+
 executable MensaCampusNord
   -- .hs or .lhs file containing the Main module.
   main-is:             Main.hs
@@ -58,11 +68,12 @@ executable MensaCampusNord
   -- other-extensions:    
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.9 && <4.11,
+  build-depends:       base >=4.9 && <5.11,
                        text >=1.0.0 && < 1.5.0,
                        process >=1.0.0 && < 2.0.0,
                        time >= 1.0.0 && < 2.0.0,
-                       directory >= 1.0.0 && < 2.0.0
+                       directory >= 1.0.0 && < 2.0.0,
+                       hxt >=9.0.0 && <10.0.0
   
   -- Directories containing source files.
   hs-source-dirs:      src

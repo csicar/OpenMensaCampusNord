@@ -15,6 +15,7 @@ import System.Directory
 import System.Environment
 import Data.Ratio ( (%), numerator, denominator )
 import qualified Data.Text as T
+import Text.XML.HXT.Core hiding (when)
 
 -- size of one food field
 mealInfoWidth = 114
@@ -80,17 +81,18 @@ parseDate year s = fromGregorian (fromInteger year) month monthDay
         monthDay = fromMaybe 0 $ maybeRead $ parts !! 0
         month =  fromMaybe 0 $ maybeRead $ parts !! 1
 
-fileName = "Speiseplan_deutsch.pdf"
         
 main = do
+    let fileName = "Speiseplan_deutsch.pdf"
     print "delete file if exist"
     fileExists <- doesFileExist fileName
     when fileExists (removeFile fileName)
     print "download"
     callProcess "wget" ["http://www.aserv.kit.edu/downloads/Speiseplan_deutsch.pdf", "--prefer-family=IPv4"]
     print "convert to text"
-    canteen <- extractCanteen
-    writeFile "data.xml" (writeCanteen canteen)
+    canteen <- extractCanteen fileName
+    runX $ root [] [writeCanteen canteen] >>> writeDocument [withIndent yes] "data.xml"
+    -- writeFile "data.xml" (writeCanteen canteen)
     args <- getArgs
     print args
     if null args then do
@@ -211,8 +213,8 @@ extractDates = do
         startDateX = 371
         endDateX = 431
 
-extractCanteen :: IO Canteen
-extractCanteen = do
+extractCanteen :: String -> IO Canteen
+extractCanteen fileName = do
     (rawStartDate, rawEndDate) <- extractDates
     (year, _, _) <- getCurrentTime >>= return . toGregorian . utctDay
     let startDate = parseDate year rawStartDate
@@ -220,40 +222,59 @@ extractCanteen = do
     days <- extractDays startDate endDate
     return Canteen {startDate= startDate, endDate= endDate, days= days}
 
-writeCanteen :: Canteen -> String 
+writeCanteen :: ArrowXml a => Canteen -> a XmlTree XmlTree 
 writeCanteen canteen = 
-    "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n\
-    \<openmensa version=\"2.1\" xmlns=\"http://openmensa.org/open-mensa-v2\"\n\
-           \xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\
-           \xsi:schemaLocation=\"http://openmensa.org/open-mensa-v2 http://openmensa.org/open-mensa-v2.xsd\">\n\
-    \<version>1</version>\n\
-    \<canteen>\n\
-        \" ++ (concat $ map writeDay (days canteen)) ++ "\
-    \\n</canteen>\
-    \</openmensa>"
+    mkelem "openmensa"
+        [ sattr "version" "2.1"
+        , sattr "xmlns" "http://openmensa.org/open-mensa-v2"
+        , sattr "xmlns:xsi" "http://www.w3.org/2001/XMLSchema-instance"
+        , sattr "xsi:schemaLocation" "http://openmensa.org/open-mensa-v2 http://openmensa.org/open-mensa-v2.xsd"
+        ]
+        [ mkelem "version" [] [txt "1"]
+        , mkelem "canteen" [] (map writeDay (days canteen))
+        ]
+        
 
-writeDay :: CanteenDay -> String
+    -- "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n\
+    -- \<openmensa version=\"2.1\" xmlns=\"http://openmensa.org/open-mensa-v2\"\n\
+    --        \xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\
+    --        \xsi:schemaLocation=\"http://openmensa.org/open-mensa-v2 http://openmensa.org/open-mensa-v2.xsd\">\n\
+    -- \<version>1</version>\n\
+    -- \<canteen>\n\
+    --     \" ++ (concat $ map writeDay (days canteen)) ++ "\
+    -- \\n</canteen>\
+    -- \</openmensa>"
+
+
+writeDay :: ArrowXml a => CanteenDay -> a XmlTree XmlTree
 writeDay day = 
-    "<day date=\""++ (show $ dayDate day) ++"\">"
-    ++ (concat $ map writeLine (lines day))
-    ++ "</day>\n"
+    mkelem "day" [sattr "date" (show $ dayDate day)]
+        (map writeLine (lines day))
 
-writeLine :: Line -> String
+writeLine :: ArrowXml a => Line -> a XmlTree XmlTree
 writeLine (OpenLine name meal) = 
-    "<category name=\""++ name ++"\">\n"
-    ++ writeMeal meal ++
-    "</category>\n"
+    mkelem "category" 
+        [sattr "name" name]
+        [writeMeal meal]
 writeLine (ClosedLine name) =
-    "<category name=\""++ name ++ "\">\n\
-        \<meal><name>closed</name></meal>\
-    \</category>\n"
+    mkelem "category" 
+        [sattr "name" name]
+        [ mkelem "meal" []
+            [ mkelem "name" [] [txt "closed"]]
+        ]
 
-writeMeal :: Meal -> String
+writeMeal :: ArrowXml a => Meal -> a XmlTree XmlTree
 writeMeal meal =
-    "<meal>\n\
-    \   <name>" ++ (description meal) ++ "</name>\n\
-    \   <price role=\"student\">" ++ (showPrice $ price meal) ++ "</price>\n\
-    \   <price role=\"employee\">" ++ (showPrice $ price meal) ++ "</price>\n\
-    \   <price role=\"other\">" ++ (showPrice $ price meal * (1 + 3 % 10)) ++ "</price>\n\
-    \</meal>\n"
-    where showPrice = displayRational 2
+    mkelem "meal" []
+        [ mkelem "name" [] [txt $ description meal]
+        , mkelem "price"
+            [sattr "role" "student"]
+            [showPrice $ price meal]
+        , mkelem "price"
+            [sattr "role" "employee"]
+            [showPrice $ price meal]
+        , mkelem "price"
+            [sattr "role" "other"]
+            [showPrice $ price meal * (1 + 3 % 10)]
+        ]
+    where showPrice = txt . displayRational 2
