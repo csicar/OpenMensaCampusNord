@@ -1,4 +1,3 @@
-Speiseplan_deutsch.*
-data.xml
-dist
-.cabal-sandbox
+.stack-work/
+mensa-campus-nord.cabal
+*~

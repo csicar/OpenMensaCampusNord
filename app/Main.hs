@@ -1,4 +1,3 @@
-#!/bin/runhaskell
 module Main where 
 
 import System.Process
