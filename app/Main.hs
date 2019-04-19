@@ -265,7 +265,7 @@ writeLine (ClosedLine name) =
 writeMeal :: ArrowXml a => Meal -> a XmlTree XmlTree
 writeMeal meal =
     mkelem "meal" []
-        [ mkelem "name" [] [txt $ description meal]
+        [ mkelem "name" [] [txt $ addSpace $ description meal]
         , mkelem "price"
             [sattr "role" "student"]
             [showPrice $ price meal]
@@ -276,4 +276,7 @@ writeMeal meal =
             [sattr "role" "other"]
             [showPrice $ price meal * (1 + 3 % 10)]
         ]
-    where showPrice = txt . displayRational 2
+    where
+        showPrice = txt . displayRational 2
+        addSpace "" = "-"
+        addSpace x = x
